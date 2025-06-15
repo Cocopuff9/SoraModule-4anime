@@ -1,0 +1,15 @@
+{
+  "id": "4anime",
+  "name": "4Anime",
+  "version": "1.0.0",
+  "icon": "https://4anime.gg/favicon.ico",
+  "cover": "https://4anime.gg/logo.png",
+  "baseURL": "https://4anime.gg",
+  "script": "https://raw.githubusercontent.com/YOUR_USERNAME/SoraModule-4anime/main/Scraper.js",
+  "authors": ["Cocopuff"],
+  "status": true,
+  "language": "en",
+  "tags": ["anime", "subbed", "dubbed", "multi-subtitles"],
+  "type": "anime",
+  "nsfw": false
+}
