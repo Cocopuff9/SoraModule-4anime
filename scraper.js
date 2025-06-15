@@ -1,172 +1,154 @@
-async function search(query) {
-  const res = await fetch(`https://4anime.gg/search?keyword=${encodeURIComponent(query)}`);
+import { load } from "cheerio";
+import fetch from "node-fetch";
+
+const baseUrl = "https://4anime.gg";
+
+function extractSlug(url) {
+  const match = url.match(/\/(anime|watch)\/([^\/?#]+)/);
+  return match ? match[2] : null;
+}
+
+async function getPopular(page = 1) {
+  const res = await fetch(`${baseUrl}/?page=${page}`);
   const html = await res.text();
-  const dom = new DOMParser().parseFromString(html, "text/html");
+  const $ = load(html);
+  const results = [];
 
-  const results = [...dom.querySelectorAll(".film-list .film-item")].map((el) => {
-    const title = el.querySelector(".film-name a")?.textContent?.trim();
-    const href = el.querySelector("a")?.getAttribute("href");
-    const poster = el.querySelector("img")?.getAttribute("data-src") || "";
+  $("div#seriesList div.series").each((_, el) => {
+    const title = $(el).find("h5 a").text().trim();
+    const url = $(el).find("h5 a").attr("href");
+    const image = $(el).find("img").attr("src");
 
-    return {
-      title,
-      url: href,
-      poster,
-    };
+    if (title && url && image) {
+      results.push({
+        title,
+        url: baseUrl + url,
+        img: image.startsWith("http") ? image : baseUrl + image,
+      });
+    }
   });
 
   return results;
 }
 
-async function fetchAnimeInfo(url) {
-  const res = await fetch(url);
+async function search(query) {
+  const res = await fetch(`${baseUrl}/search?keyword=${encodeURIComponent(query)}`);
   const html = await res.text();
-  const doc = new DOMParser().parseFromString(html, "text/html");
+  const $ = load(html);
+  const results = [];
 
-  const title = doc.querySelector(".anime__details__title h3")?.textContent?.trim();
-  const description = doc.querySelector(".anime__details__text p")?.textContent?.trim() || "";
-  const episodes = [...doc.querySelectorAll(".ep-item a")].map((a) => ({
-    title: a.textContent?.trim(),
-    url: a.href,
-  }));
+  $("div#seriesList div.series").each((_, el) => {
+    const title = $(el).find("h5 a").text().trim();
+    const url = $(el).find("h5 a").attr("href");
+    const image = $(el).find("img").attr("src");
+
+    if (title && url && image) {
+      results.push({
+        title,
+        url: baseUrl + url,
+        img: image.startsWith("http") ? image : baseUrl + image,
+      });
+    }
+  });
+
+  return results;
+}
+async function search(query) {
+  const url = `https://4anime.gg/search?keyword=${encodeURIComponent(query)}`;
+  const res = await fetch(url);
+  const $ = cheerio.load(res);
+  const results = [];
+
+  $('.film_list-wrap .flw-item').each((i, elem) => {
+    const title = $(elem).find('.film-name a').text().trim();
+    const image = $(elem).find('.film-poster-img').attr('data-src') || '';
+    const link = $(elem).find('a').attr('href');
+    const idMatch = link?.match(/\/anime\/([^/]+)/);
+    const id = idMatch ? idMatch[1] : link;
+
+    results.push({
+      id,
+      title,
+      image,
+      url: 'https://4anime.gg' + link,
+    });
+  });
+
+  return results;
+}
+
+async function getAnimeInfo(id) {
+  const url = `https://4anime.gg/anime/${id}`;
+  const res = await fetch(url);
+  const $ = cheerio.load(res);
+
+  const title = $('h2.film-name.dynamic-name').text().trim();
+  const description = $('div.description').text().trim();
+  const image = $('div.anisc-poster img').attr('src');
+  const episodes = [];
+
+  $('div.eps-list a.ep-item').each((i, el) => {
+    const epUrl = $(el).attr('href');
+    const epNum = $(el).find('.tick-item.tick-quality').text().trim();
+    const epId = epUrl?.split('/').pop();
+
+    episodes.push({
+      id: epId,
+      number: epNum || `${i + 1}`,
+      title: `Episode ${epNum || i + 1}`,
+      url: 'https://4anime.gg' + epUrl,
+    });
+  });
 
   return {
     title,
     description,
-    episodes,
+    image,
+    episodes: episodes.reverse(),
   };
 }
+async function getSources(episodeId) {
+  const epUrl = `https://4anime.gg/watch/${episodeId}`;
+  const res = await fetch(epUrl);
+  const html = res;
+  
+  // Regex to find streaming iframe URL
+  const iframeMatch = html.match(/<iframe[^>]+src=["']([^"']+)["']/);
+  if (!iframeMatch) throw new Error("Streaming iframe not found");
 
-async function fetchVideoSources(episodeUrl) {
-  const res = await fetch(episodeUrl);
-  const html = await res.text();
-  const doc = new DOMParser().parseFromString(html, "text/html");
+  const iframeUrl = iframeMatch[1].startsWith('http') ? iframeMatch[1] : `https:${iframeMatch[1]}`;
+  const embedRes = await fetch(iframeUrl);
+  const embedHtml = embedRes;
 
-  const iframe = doc.querySelector("iframe");
-  const embedUrl = iframe?.src;
+  // Regex to find streaming .m3u8 HLS file
+  const streamMatch = embedHtml.match(/(https:\/\/[^"']+\.m3u8[^"']*)/);
+  if (!streamMatch) throw new Error("Stream URL not found");
 
-  if (!embedUrl) return [];
+  const streamUrl = streamMatch[1];
 
-  const sources = await extractSources(embedUrl);
-  return sources;
-}
-
-async function extractSources(embedUrl) {
-  const res = await fetch(embedUrl);
-  const html = await res.text();
-  const matches = [...html.matchAll(/file:\s*"(.*?)"/g)];
-
-  const sources = matches.map((match) => ({
-    url: match[1],
-    quality: "Unknown",
-    isM3U8: match[1].endsWith(".m3u8"),
-  }));
-
-  return sources;
-}
-async function fetchSubtitleTracks(embedUrl) {
-  const res = await fetch(embedUrl);
-  const html = await res.text();
-
-  const subtitleMatches = [...html.matchAll(/tracks:\s*\[(.*?)\]/gs)];
-  if (!subtitleMatches.length) return [];
-
-  const trackJSON = `[${subtitleMatches[0][1]}]`;
-  try {
-    const tracks = JSON.parse(trackJSON.replace(/label/g, '"label"').replace(/file/g, '"file"'));
-    return tracks.map((track) => ({
-      label: track.label,
-      url: track.file,
-    }));
-  } catch (e) {
-    return [];
-  }
-}
-
-function resolveMedia(sources, subtitles = []) {
-  return sources.map((src) => ({
-    url: src.url,
-    quality: src.quality || "unknown",
-    isM3U8: src.isM3U8,
-    subtitles,
-  }));
-}
-
-async function loadEpisode(episodeUrl) {
-  const res = await fetch(episodeUrl);
-  const html = await res.text();
-  const doc = new DOMParser().parseFromString(html, "text/html");
-
-  const iframe = doc.querySelector("iframe");
-  if (!iframe) throw new Error("Video iframe not found");
-
-  const embedUrl = iframe.src;
-  const sources = await extractSources(embedUrl);
-  const subtitles = await fetchSubtitleTracks(embedUrl);
-
-  return resolveMedia(sources, subtitles);
-}
-
-function getHeaders() {
-  return {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98 Safari/537.36",
-  };
-}
-
-async function fetchHtml(url) {
-  const res = await fetch(url, { headers: getHeaders() });
-  return await res.text();
-}
-
-function parseEpisodes(doc) {
-  return [...doc.querySelectorAll(".ep-item a")].map((a) => ({
-    title: a.textContent.trim(),
-    url: a.href,
-  }));
-}
-
-function parseMetadata(doc) {
-  const title = doc.querySelector(".anime__details__title h3")?.textContent.trim() ?? "";
-  const image = doc.querySelector(".anime__details__pic img")?.src ?? "";
-  const description = doc.querySelector(".anime__details__text p")?.textContent.trim() ?? "";
-  const genre = [...doc.querySelectorAll(".anime__details__widget ul li")]
-    .map((li) => li.textContent.trim())
-    .join(", ");
-
-  return { title, image, description, genre };
-}
-export default {
-  async search(query) {
-    const url = `${BASE_URL}/?s=${encodeURIComponent(query)}`;
-    const html = await fetchHtml(url);
-    const doc = new DOMParser().parseFromString(html, "text/html");
-
-    const results = [...doc.querySelectorAll(".anime__item")].map((item) => {
-      const title = item.querySelector(".anime__item__text h5 a")?.textContent.trim() ?? "";
-      const url = item.querySelector("a")?.href ?? "";
-      const image = item.querySelector("img")?.src ?? "";
-
-      return { title, url, image };
+  // Regex to find subtitle tracks (vtt, srt, etc.)
+  const subtitles = [];
+  const subtitleRegex = /{file:"([^"]+)",label:"([^"]+)",kind:"captions"}/g;
+  let match;
+  while ((match = subtitleRegex.exec(embedHtml)) !== null) {
+    subtitles.push({
+      url: match[1],
+      lang: match[2],
     });
+  }
 
-    return results;
-  },
-
-  async fetchMetadata(url) {
-    const html = await fetchHtml(url);
-    const doc = new DOMParser().parseFromString(html, "text/html");
-
-    const metadata = parseMetadata(doc);
-    const episodes = parseEpisodes(doc);
-
-    return {
-      ...metadata,
-      episodes,
-    };
-  },
-
-  async fetchEpisodeSources(episodeUrl) {
-    return await loadEpisode(episodeUrl);
-  },
+  return {
+    stream: {
+      url: streamUrl,
+      type: "hls",
+      quality: "auto",
+    },
+    subtitles,
+  };
+}
+module.exports = {
+  search,
+  getAnimeInfo,
+  getEpisodeList,
+  getSources,
 };
