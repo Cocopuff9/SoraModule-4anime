@@ -47,15 +47,15 @@ async function searchResults(keyword) {
     }
 
     try {
-        const res = await soraFetch(`${BASE_URL}/?s=${encodeURIComponent(keyword)}`);
+        const res = await soraFetch(`${BASE_URL}/search?query=${encodeURIComponent(keyword)}`);
         const html = typeof res === 'object' ? await res.text() : res;
         const $ = cheerio.load(html);
         const results = [];
 
-        $('.items .item').each((i, el) => {
-            const title = $(el).find('.name').text().trim();
-            const href = $(el).find('a').attr('href');
-            const image = $(el).find('img').attr('src');
+        $('.film-list .flw-item').each((i, el) => {
+            const title = $(el).find('.film-name a').attr('title')?.trim();
+            const href = BASE_URL + $(el).find('.film-name a').attr('href');
+            const image = $(el).find('img').attr('data-src')?.trim();
 
             if (title && href && image) {
                 results.push({ title, href, image });
