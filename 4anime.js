@@ -40,3 +40,31 @@ export default {
 
       return results;
     }
+     } else if (type === "meta") {
+      const res = await fetch(id);
+      const $ = cheerio.load(res.text());
+
+      const title = $("h1.entry-title").text().trim();
+      const image = $("div.cover img").attr("src");
+      const description = $("div.description > p").first().text().trim();
+
+      const episodes = [];
+
+      $("ul.episodes > li").each((_, el) => {
+        const epURL = $(el).find("a").attr("href");
+        const epTitle = $(el).find("a").text().trim();
+        if (epURL) {
+          episodes.push({
+            id: epURL,
+            title: epTitle
+          });
+        }
+      });
+
+      return {
+        title,
+        image,
+        description,
+        episodes
+      };
+    }   
