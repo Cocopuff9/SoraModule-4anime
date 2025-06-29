@@ -111,3 +111,8 @@ export default {
         subtitles
       };
     }
+    else {
+      throw new Error("Unsupported request type: " + type);
+    }
+  }
+};
