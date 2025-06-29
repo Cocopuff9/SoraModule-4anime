@@ -116,3 +116,17 @@ export default {
     }
   }
 };
+// This Sora module supports the following:
+// ✅ Anime search
+// ✅ Metadata (title, image, description)
+// ✅ Episode list
+// ✅ Streaming (HLS and MP4)
+// ✅ English soft subtitles
+
+// Module by: Wisest Gamemaster 580 (with help from ChatGPT)
+// Based on structure from AniCrush.js
+
+// How to use:
+// 1. Upload this JS file to GitHub or a raw host
+// 2. In the Sora app, go to Modules > Add via URL
+// 3. Paste the raw GitHub URL and enjoy streaming from 4anime.gg!
