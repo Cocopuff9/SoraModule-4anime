@@ -1,0 +1,13 @@
+{
+  "name": "4Anime",
+  "id": "4anime",
+  "author": "Wisest Gamemaster 580",
+  "icon": "https://4anime.gg/favicon.ico",
+  "entry": "https://raw.githubusercontent.com/Cocopuff9/SoraModule-4anime/main/4anime.js",
+  "lang": ["en"],
+  "version": 1,
+  "requirements": [],
+  "categories": ["anime"],
+  "adult": false,
+  "config": {}
+}
