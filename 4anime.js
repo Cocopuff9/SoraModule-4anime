@@ -1,1 +1,42 @@
+/** @sora-module */
+export default {
+  id: "4anime",
+  name: "4Anime",
+  description: "Stream anime from 4anime.gg with English soft subtitles and multiple quality support",
+  icon: "https://4anime.gg/favicon.ico",
+  baseURL: "https://4anime.gg",
+  version: 1,
+  streamAsync: async (args) => {
+    const fetch = args.fetch;
+    const cheerio = args.cheerio;
+    const query = args.query;
+    const type = args.type;
+    const page = args.page || 1;
+    const id = args.id;
 
+    const base = "https://4anime.gg";
+
+    if (type === "search") {
+      const searchURL = `${base}/?s=${encodeURIComponent(query)}`;
+      const res = await fetch(searchURL);
+      const $ = cheerio.load(res.text());
+
+      const results = [];
+
+      $("div#content article").each((_, el) => {
+        const title = $(el).find("h3").text().trim();
+        const url = $(el).find("a").attr("href");
+        const img = $(el).find("img").attr("src");
+        const desc = $(el).find("p").text().trim();
+
+        results.push({
+          id: url,
+          title,
+          image: img,
+          description: desc,
+          type: "series"
+        });
+      });
+
+      return results;
+    }
