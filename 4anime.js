@@ -68,3 +68,46 @@ export default {
         episodes
       };
     }   
+    else if (type === "stream") {
+      const res = await fetch(id);
+      const html = res.text();
+
+      const sources = [];
+      const subtitles = [];
+
+      // Extract HLS (.m3u8) master playlist using regex
+      const hlsMatch = html.match(/file:\s*["'](https:\/\/[^"']+\.m3u8)["']/);
+      if (hlsMatch) {
+        const hlsUrl = hlsMatch[1];
+        sources.push({
+          url: hlsUrl,
+          format: "hls",
+          quality: "auto"
+        });
+      }
+
+      // Extract MP4 fallback(s) — if any
+      const mp4Matches = [...html.matchAll(/file:\s*["'](https:\/\/[^"']+\.mp4[^"']*)["']/g)];
+      mp4Matches.forEach((match) => {
+        sources.push({
+          url: match[1],
+          format: "mp4",
+          quality: "unknown"
+        });
+      });
+
+      // Subtitles (.vtt/.srt/.ass) if present
+      const subMatches = [...html.matchAll(/tracks:\s*\[\s*\{\s*file:\s*["']([^"']+\.(vtt|srt|ass))["']/g)];
+      subMatches.forEach((match) => {
+        subtitles.push({
+          url: match[1],
+          lang: "English",
+          type: match[2]
+        });
+      });
+
+      return {
+        sources,
+        subtitles
+      };
+    }
