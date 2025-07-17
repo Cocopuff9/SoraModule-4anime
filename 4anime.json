@@ -2,7 +2,7 @@
     "id": "4anime",
     "name": "4anime",
     "description": "Stream anime from 4anime.gg with multi-quality and English soft subtitles.",
-    "author": "YourName",
+    "author": "cocopuff",
     "icon": "https://4anime.gg/favicon.ico",
     "languages": ["en"],
     "version": "1.0.0",
