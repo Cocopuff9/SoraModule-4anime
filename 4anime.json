@@ -1,13 +1,13 @@
 {
-  "name": "4Anime",
-  "id": "4anime",
-  "author": "Wisest Gamemaster 580",
-  "icon": "https://raw.githubusercontent.com/Cocopuff9/SoraModule-4anime/main/IMG_0091.jpeg",
-  "entry": "https://raw.githubusercontent.com/Cocopuff9/SoraModule-4anime/main/4anime.js",
-  "lang": ["en"],
-  "version": 1,
-  "requirements": [],
-  "categories": ["anime"],
-  "adult": false,
-  "config": {}
+    "id": "4anime",
+    "name": "4anime",
+    "description": "Stream anime from 4anime.gg with multi-quality and English soft subtitles.",
+    "author": "YourName",
+    "icon": "https://4anime.gg/favicon.ico",
+    "languages": ["en"],
+    "version": "1.0.0",
+    "moduleType": "live",
+    "module": "live/4anime.js",
+    "url": "https://4anime.gg",
+    "tags": ["anime", "streaming", "subtitles", "multi-quality"]
 }
