@@ -3,7 +3,7 @@
     "name": "4anime",
     "description": "Stream anime from 4anime.gg with multi-quality and English soft subtitles.",
     "author": "cocopuff",
-    "icon": "https://4anime.gg/favicon.ico",
+    "icon": "https://github.com/Cocopuff9/SoraModule-4anime/blob/main/IMG_0091.jpeg",
     "languages": ["en"],
     "version": "1.0.0",
     "moduleType": "live",
