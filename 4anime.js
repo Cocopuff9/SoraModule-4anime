@@ -1,132 +1,75 @@
-/** @sora-module */
-export default {
-  id: "4anime",
-  name: "4Anime",
-  description: "Stream anime from 4anime.gg with English soft subtitles and multiple quality support",
-  icon: "https://4anime.gg/favicon.ico",
-  baseURL: "https://4anime.gg",
-  version: 1,
-  streamAsync: async (args) => {
-    const fetch = args.fetch;
-    const cheerio = args.cheerio;
-    const query = args.query;
-    const type = args.type;
-    const page = args.page || 1;
-    const id = args.id;
+const BASE_URL = "https://4anime.gg";
 
-    const base = "https://4anime.gg";
-
-    if (type === "search") {
-      const searchURL = `${base}/?s=${encodeURIComponent(query)}`;
-      const res = await fetch(searchURL);
-      const $ = cheerio.load(res.text());
-
-      const results = [];
-
-      $("div#content article").each((_, el) => {
-        const title = $(el).find("h3").text().trim();
-        const url = $(el).find("a").attr("href");
-        const img = $(el).find("img").attr("src");
-        const desc = $(el).find("p").text().trim();
-
+function searchResults(html) {
+    const results = [];
+    const regex = /<a href="(\/anime\/[^"]+)"[^>]*class="name">([^<]+)<\/a>[\s\S]*?src="([^"]+)"/g;
+    let match;
+    while ((match = regex.exec(html))) {
         results.push({
-          id: url,
-          title,
-          image: img,
-          description: desc,
-          type: "series"
+            title: match[2].trim(),
+            href: BASE_URL + match[1],
+            image: match[3].startsWith('http') ? match[3] : BASE_URL + match[3]
         });
-      });
-
-      return results;
     }
-     } else if (type === "meta") {
-      const res = await fetch(id);
-      const $ = cheerio.load(res.text());
+    return results;
+}
 
-      const title = $("h1.entry-title").text().trim();
-      const image = $("div.cover img").attr("src");
-      const description = $("div.description > p").first().text().trim();
+function extractDetails(html) {
+    const description = /<p class="description">([\s\S]*?)<\/p>/.exec(html)?.[1]?.trim() || '';
+    const airdate = /<span class="year">([^<]+)<\/span>/.exec(html)?.[1] || '';
+    return {
+        description: description,
+        airdate: airdate,
+        aliases: null
+    };
+}
 
-      const episodes = [];
+function extractEpisodes(html) {
+    const episodes = [];
+    const epRegex = /<a href="(\/episode\/[^"]+)"[^>]*>\s*Episode\s*(\d+)\s*<\/a>/g;
+    let match;
+    while ((match = epRegex.exec(html))) {
+        episodes.push({
+            number: match[2],
+            href: BASE_URL + match[1]
+        });
+    }
+    return episodes;
+}
 
-      $("ul.episodes > li").each((_, el) => {
-        const epURL = $(el).find("a").attr("href");
-        const epTitle = $(el).find("a").text().trim();
-        if (epURL) {
-          episodes.push({
-            id: epURL,
-            title: epTitle
-          });
-        }
-      });
-
-      return {
-        title,
-        image,
-        description,
-        episodes
-      };
-    }   
-    else if (type === "stream") {
-      const res = await fetch(id);
-      const html = res.text();
-
-      const sources = [];
-      const subtitles = [];
-
-      // Extract HLS (.m3u8) master playlist using regex
-      const hlsMatch = html.match(/file:\s*["'](https:\/\/[^"']+\.m3u8)["']/);
-      if (hlsMatch) {
-        const hlsUrl = hlsMatch[1];
+function extractStreamUrl(html) {
+    // Regex to extract all stream qualities and subtitles if embedded
+    const sources = [];
+    const regex = /<source\s+src="([^"]+)"\s+label="([^"]+)"[^>]*>/g;
+    let match;
+    while ((match = regex.exec(html))) {
         sources.push({
-          url: hlsUrl,
-          format: "hls",
-          quality: "auto"
+            url: match[1],
+            quality: match[2],
+            isSoftSub: true, // Assume subs are soft by default (adjust if needed)
+            subtitles: extractSubtitles(html)
         });
-      }
-
-      // Extract MP4 fallback(s) — if any
-      const mp4Matches = [...html.matchAll(/file:\s*["'](https:\/\/[^"']+\.mp4[^"']*)["']/g)];
-      mp4Matches.forEach((match) => {
-        sources.push({
-          url: match[1],
-          format: "mp4",
-          quality: "unknown"
-        });
-      });
-
-      // Subtitles (.vtt/.srt/.ass) if present
-      const subMatches = [...html.matchAll(/tracks:\s*\[\s*\{\s*file:\s*["']([^"']+\.(vtt|srt|ass))["']/g)];
-      subMatches.forEach((match) => {
-        subtitles.push({
-          url: match[1],
-          lang: "English",
-          type: match[2]
-        });
-      });
-
-      return {
-        sources,
-        subtitles
-      };
     }
-    else {
-      throw new Error("Unsupported request type: " + type);
+    return sources.length > 0 ? sources : null;
+}
+
+function extractSubtitles(html) {
+    // Example subtitle extractor
+    const subs = [];
+    const regex = /<track\s+kind="subtitles"\s+src="([^"]+)"\s+srclang="en"[^>]*>/g;
+    let match;
+    while ((match = regex.exec(html))) {
+        subs.push({
+            lang: 'en',
+            url: match[1]
+        });
     }
-  }
-};
-// This Sora module supports the following:
-// ✅ Anime search
-// ✅ Metadata (title, image, description)
-// ✅ Episode list
-// ✅ Streaming (HLS and MP4)
-// ✅ English soft subtitles
+    return subs;
+}
 
-// Module by: Wisest Gamemaster 580 (with help from ChatGPT)
-// Based on structure from AniCrush.js
-
-// How to use:
-// 1. Upload this JS file to GitHub or a raw host
-// 2. In the Sora app, go to Modules > Add via URL
-// 3. Paste the raw GitHub URL and enjoy streaming from 4anime.gg!
+module.exports = {
+    searchResults,
+    extractDetails,
+    extractEpisodes,
+    extractStreamUrl
+}; 
